@@ -52,7 +52,7 @@ cache:
     response: 30
   redis_group:
     redis1:
-      host: 192.168.216.205
+      host: 127.0.0.1
       port: 6379
       webservice:
         url: ":9000"
@@ -65,6 +65,7 @@ consensus:
   etcd_group:
     leader:
        hraft_grpc_address: "10.112.79.24:8880"
+       #hraft_grpc_address: "0.0.0.0:8880"
        block_grpc_address: "10.112.235.124:8889"
        host: "localhost"
        port: 2379

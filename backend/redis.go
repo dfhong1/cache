@@ -16,6 +16,7 @@ import (
 )
 
 func NewRedisBackend(ctx context.Context, config *dataStruct.GlobalConfig) (*redis.Client, error) {
+	//go StartGrpcPort(":" + "8880")
 
 	if config.Cache.CommonConfig.SyncInternal == 0 || config.Cache.CommonConfig.SyncSizeLimit == 0 {
 		log.Error("internal or limit is zero")
@@ -49,6 +50,9 @@ func NewRedisBackend(ctx context.Context, config *dataStruct.GlobalConfig) (*red
 
 	return rdb, nil
 }
+
+var wg sync.WaitGroup
+var wg2 sync.WaitGroup
 
 type subscribeClient struct {
 	m           sync.Mutex
@@ -96,65 +100,98 @@ func initDataTypeSubscribe(ctx context.Context, client *subscribeClient) error {
 		ticker := time.NewTicker(time.Second * time.Duration(client.config.Cache.CommonConfig.SyncInternal))
 
 		defer ticker.Stop()
-		log.Info("按照时间推送")
+		log.Info("按照时间推送") //判断有没有数据需要推送
 		for {
 			<-ticker.C
+			wg.Add(1)
+			wg2.Wait()
 			if err := sendDataBlock(ctx, client, etcdClient); err != nil {
 				Status.FailPushNumber++
 				log.Error("sendDataBlock error: ", err)
 				//return
 			}
+
 			//记录按时间限制推送的数据次数
 			Status.TimePushNumber++
+			wg.Done()
 		}
 	}()
+	ch2 := make(chan error)
+	ch3 := make(chan int)
+	go func() error {
+		for {
+			select {
+			case err := <-ch2:
+				return err //再穿一个给主函数，让主函数return
+			case x := <-ch3:
+
+				if x > client.config.Cache.CommonConfig.SyncSizeLimit*1024*1024 {
+					// 发送
+					wg.Add(1)
+					log.Info("消息总长度 ", client.currentSize)
+					log.Info("按照数据大小阈值推送")
+					wg2.Wait()
+					if err := sendDataBlock(ctx, client, etcdClient); err != nil {
+						Status.FailPushNumber++
+						log.Error("sendDataBlock error: ", err)
+						return err
+					}
+					Status.SizePushNumber++
+					//记录按消息总大小限制推送的数据次数
+					//这里可以发一个通道给下面的通道的go func 只有接收到才能执行，但是这样又只能有一个线程
+					wg.Done()
+				}
+
+			}
+
+		}
+	}()
+
 	// Consume messages.获取订阅的消息payload是消息，channel是通道名
 	for msg := range ch {
+		wg.Wait()
 		//计算client获取到消息的总长度
+		msg := msg
 		client.currentSize += len(msg.Payload)
-		log.Info("消息总长度 ", client.currentSize)
-		//事务锁
-		client.m.Lock()
-		//可以使用LPush()方法将数据从左侧压入链表，client.RedisCacheKey()是key,payload是value
-		if err := client.rdb.LPush(ctx, client.RedisCacheKey(), msg.Payload).Err(); err != nil {
-			client.m.Unlock()
-			log.Error("LPush error: ", err)
-			return err
-		}
-		//设置过期时间，如果发送数据超时，会定时清理数据
-		res, err := client.rdb.Expire(ctx, client.RedisCacheKey(), time.Minute*60).Result()
-		if err != nil {
-			client.m.Unlock()
-			log.Error("TTL error: ", err)
-			return err
-		}
-		if res {
-			log.Info("设置TTL成功")
-		} else {
-			log.Info("设置TTL失败")
-		}
+		ch3 <- client.currentSize
+		//log.Info("消息总长度 ", client.currentSize)
+		go func() {
+			// if client.currentSize > client.config.Cache.CommonConfig.SyncSizeLimit*1024*1024 {
+			// 	client.m.Lock()
+			// 	defer client.m.Unlock()
+			// }
+			wg2.Add(1)
+			//可以使用LPush()方法将数据从左侧压入链表，client.RedisCacheKey()是key,payload是value
 
-		client.m.Unlock()
-		// 大小限制到了，应该同步一次，1M
-		if client.currentSize > client.config.Cache.CommonConfig.SyncSizeLimit*1024*1024 {
-			// 发送
-			log.Info("按照数据大小阈值推送")
-			if err := sendDataBlock(ctx, client, etcdClient); err != nil {
-				Status.FailPushNumber++
-				log.Error("sendDataBlock error: ", err)
-				return err
+			if err := client.rdb.LPush(ctx, client.RedisCacheKey(), msg.Payload).Err(); err != nil {
+
+				log.Error("LPush error: ", err)
+				ch2 <- err
 			}
-			//记录按消息总大小限制推送的数据次数
-			Status.SizePushNumber++
-		}
+			//设置过期时间，如果发送数据超时，会定时清理数据
+
+			res, err := client.rdb.Expire(ctx, client.RedisCacheKey(), time.Minute*60).Result()
+			wg2.Done()
+			if err != nil {
+
+				log.Error("TTL error: ", err)
+				ch2 <- err
+			}
+			if res {
+				//	log.Info("设置TTL成功")
+			} else {
+				log.Info("设置TTL失败")
+			}
+
+		}()
+
 	}
 
 	return nil
 }
 
 func sendDataBlock(ctx context.Context, client *subscribeClient, etcdClient *clientv3.Client) error {
-	client.m.Lock()
-	defer client.m.Unlock()
+	// client.m.Lock()
 
 	// todo: 应该分次小量取出。LRange():获取某个选定范围的元素集 0 -1表示全部元素
 	results, err := client.rdb.LRange(ctx, client.RedisCacheKey(), 0, -1).Result()
@@ -165,7 +202,7 @@ func sendDataBlock(ctx context.Context, client *subscribeClient, etcdClient *cli
 
 	// 数据推送
 	if len(results) != 0 {
-		log.Info("legderName: ", client.ledgerName, " 待发送数据: ", results)
+		//log.Info("legderName: ", client.ledgerName, " 待发送数据: ", results)
 		log.Info("start to process data...")
 		if err := NewRpcClient(ctx, client.config, client.ledgerName, etcdClient, results); err != nil {
 			log.Error("rpcClient error: ", err)
@@ -179,5 +216,6 @@ func sendDataBlock(ctx context.Context, client *subscribeClient, etcdClient *cli
 	}
 
 	client.currentSize = 0
+	// client.m.Unlock()
 	return nil
 }

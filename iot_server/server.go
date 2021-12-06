@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	_ "net/http/pprof"
 	"strconv"
 	"time"
 
@@ -25,7 +26,7 @@ func NewIOTServer(ctx context.Context, results chan interface{}, rdb *redis.Clie
 		return c.String(http.StatusOK, "Hello, Scope!")
 	})
 	e.POST("/storeReceipt", func(c echo.Context) error {
-		log.Info("接收到存证数据")
+		//log.Info("接收到存证数据")
 
 		var receipts DataReceipts
 		if err := c.Bind(&receipts); err != nil {
@@ -41,7 +42,7 @@ func NewIOTServer(ctx context.Context, results chan interface{}, rdb *redis.Clie
 		//该时间传入的整个数组集都统一时间戳
 		str := time.Unix(timeUnix, 0).Format("2006-01-02 15:04:05.123")
 		receipts.CreateTimestamp = str[:23]
-		log.Info(receipts)
+		//log.Info(receipts)
 		for _, r := range receipts.Receipts {
 			var receipt DataReceipt
 			receipt.CreateTimestamp = receipts.CreateTimestamp

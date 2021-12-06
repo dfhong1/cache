@@ -9,7 +9,10 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
+	"fmt"
+	_ "net/http/pprof"
 	"os"
+	"runtime/pprof"
 	"strconv"
 	"time"
 
@@ -21,10 +24,31 @@ import (
 var node = flag.String("node", "redis1", "节点名称参数")
 var status = flag.Bool("status", false, "状态监测参数")
 
+//var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+
 //var systemStatus backend.SystemStatus
 
 func main() {
 	flag.Parse() //解析flag，把用户传递的命令行参数解析为对应变量的值
+	//CPU Profile
+	f, err := os.Create("./cpuprofile")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer f.Close()
+	pprof.StartCPUProfile(f)
+	defer pprof.StopCPUProfile()
+
+	//Memory Profile
+	fm, err := os.Create("./memoryprofile")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer fm.Close()
+	pprof.WriteHeapProfile(fm)
+
 	logger.Init()
 	ctx := context.Background()
 	config := config.Initialize()
@@ -34,7 +58,9 @@ func main() {
 		log.SetOutput(os.Stdout)
 	}
 	//交易信息打包推送到hraft节点
+	go backend.StartGrpcPort(":" + "8880")
 	redisClient, err := backend.NewRedisBackend(ctx, &config)
+
 	if err != nil {
 		log.Error("后台程序运行失败: ", err)
 		panic(err)
@@ -62,8 +88,10 @@ func main() {
 	//通道results是IoT节点传来的数据
 	results := make(chan interface{})
 	defer close(results)
+	for i := 0; i < 100; i++ {
+		go consumeResult(ctx, redisClient, &config, results)
+	}
 
-	go consumeResult(ctx, redisClient, &config, results)
 	ticker := time.NewTicker(time.Second * 10)
 	go func() {
 		n, err := redisClient.Exists(ctx, "ReceiptSet").Result()
@@ -114,11 +142,13 @@ func main() {
 
 	httpServer := iot_server.NewIOTServer(ctx, results, redisClient)
 	//启动echo服务
-	httpServer.Logger.Fatal(httpServer.Start(config.Cache.RedisGroup["redis1"].WebService.URL))
+	httpServer.Logger.Fatal(httpServer.Start(":9000"))
+
 }
 
 //iot节点交易信息缓存
 func consumeResult(ctx context.Context, rdb *redis.Client, config *dataStruct.GlobalConfig, results chan interface{}) {
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -139,14 +169,16 @@ func consumeResult(ctx context.Context, rdb *redis.Client, config *dataStruct.Gl
 					log.Error("publish error: ", err)
 					return
 				}
-				log.Info("Publish Success: ", string(data))
+				//log.Info("Publish Success: ", string(data))
+				//	log.Info("Publish Success: ")
 				//redis set存入值
 				statusCmd := rdb.Set(ctx, v.KeyId, string(data), time.Second*time.Duration(config.Cache.CommonConfig.ExpireTime))
 				if statusCmd == nil || statusCmd.Err() != nil {
 					log.Error("Set error: ", statusCmd.Err())
 					return
 				}
-				log.Info("Set Success: ", string(data))
+				//log.Info("Set Success: ", string(data))
+				//log.Info("Set Success: ")
 				timestamp := time.Now().Unix()
 				rdb.ZAdd(ctx, "ReceiptSet", &redis.Z{
 					Score:  float64(timestamp),
@@ -154,7 +186,8 @@ func consumeResult(ctx context.Context, rdb *redis.Client, config *dataStruct.Gl
 				})
 				//zset的score存储时间值,每天定时扫描一下哪些过期的,取当前时间七天前的时间戳值，然后遍历zset找到比这个小的值都删除掉，就删除了七天前的数据
 
-				log.Info("Receipt sSet Success: ", string(data))
+				//log.Info("Receipt sSet Success: ", string(data))
+				//log.Info("Receipt sSet Success: ")
 			//实时交易记录
 			case *iot_server.DataTransaction:
 				backend.Status.RequestNumber++
@@ -182,7 +215,7 @@ func consumeResult(ctx context.Context, rdb *redis.Client, config *dataStruct.Gl
 
 				log.Info("TransactionSet zSet Success: ", string(data))
 			default:
-				log.Error("error type %+v", v)
+				log.Error("error type ", v)
 			}
 		}
 	}

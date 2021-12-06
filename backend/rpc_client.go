@@ -24,7 +24,7 @@ func NewRpcClient(ctx context.Context, config *dataStruct.GlobalConfig, ledgerNa
 	// set up a connection to the server.
 	connCtx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(config.Cache.CommonConfig.Connection))
 	defer cancel()
-
+	//与hraft的ip地址建立grpc连接
 	conn, err := grpc.DialContext(connCtx, config.Consensus.EtcdGroup[config.Common.LedgerName[ledgerName].Leader].HraftGrpcAddress, grpc.WithInsecure(), grpc.WithBlock())
 
 	if err != nil {
@@ -67,87 +67,87 @@ func NewRpcClient(ctx context.Context, config *dataStruct.GlobalConfig, ledgerNa
 		for _, result := range results {
 			var nodeCredibilityTransaction pb.Transaction
 			if err := json.Unmarshal([]byte(result), &nodeCredibilityTransaction); err != nil {
-				log.Error("unmarshal error: %v", err)
+				log.Error("unmarshal error: ", err)
 				return err
 			}
 			nodeCredibilityBlock.Transactions = append(nodeCredibilityBlock.Transactions, &nodeCredibilityTransaction)
 		}
-		log.Info("打包好的数据: ", nodeCredibilityBlock.Transactions)
+		//log.Info("打包好的数据: ", nodeCredibilityBlock.Transactions)
 		r, err := c.NodeCredible(subCtx, &pb.NodeCredibleData{Transactions: nodeCredibilityBlock.Transactions})
 		if err != nil {
-			log.Error("could not greet: %v", err)
+			log.Error("could not greet: ", err)
 			return err
 		}
-		log.Info("返回信息: %s", r)
+		log.Info("返回信息: ", r)
 	case LedgerMap[DataTypeVideo]:
 		var videoBlock pb.VideoData
 		for _, result := range results {
 			var videoReceipt pb.DataReceipt
 			if err := json.Unmarshal([]byte(result), &videoReceipt); err != nil {
-				log.Error("unmarshal error: %v", err)
+				log.Error("unmarshal error: ", err)
 				return err
 			}
 			videoBlock.DataReceipts = append(videoBlock.DataReceipts, &videoReceipt)
 		}
-		log.Info("打包好的数据: ", videoBlock.DataReceipts)
+		//log.Info("打包好的数据: ", videoBlock.DataReceipts)
 		r, err := c.Video(subCtx, &pb.VideoData{DataReceipts: videoBlock.DataReceipts})
 		if err != nil {
-			log.Error("cloud not greet: %v", err)
+			log.Error("cloud not greet: ", err)
 			return err
 		}
-		log.Info("返回信息: %s", r)
+		log.Infof("返回信息: %s", r)
 	case LedgerMap[DataTypeSensor]:
 		var sensorBlock pb.SensorData
 		for _, result := range results {
 			var sensorTransaction pb.Transaction
 			if err := json.Unmarshal([]byte(result), &sensorTransaction); err != nil {
-				log.Error("unmarshal error: %v", err)
+				log.Error("unmarshal error: ", err)
 				return err
 			}
 			sensorBlock.Transactions = append(sensorBlock.Transactions, &sensorTransaction)
 		}
-		log.Info("打包好的数据:", sensorBlock.Transactions)
+		//log.Info("打包好的数据:", sensorBlock.Transactions)
 		r, err := c.Sensor(subCtx, &pb.SensorData{Transactions: sensorBlock.Transactions})
 		if err != nil {
-			log.Error("cloud not greet: %v", err)
+			log.Error("cloud not greet: ", err)
 			return err
 		}
-		log.Info("返回信息: %s", r)
+		log.Info("返回信息: ", r)
 	case LedgerMap[DataTypeUserBehaviour]:
 		var userBehaviourBlock pb.UserBehaviourData
 		for _, result := range results {
 			var userBehaviourReceipt pb.DataReceipt
 			if err := json.Unmarshal([]byte(result), &userBehaviourReceipt); err != nil {
-				log.Error("unmarshal error: %v", err)
+				log.Error("unmarshal error: ", err)
 				return err
 			}
 			userBehaviourBlock.DataReceipts = append(userBehaviourBlock.DataReceipts, &userBehaviourReceipt)
 		}
-		log.Info("打包好的数据: ", userBehaviourBlock.DataReceipts)
+		//log.Info("打包好的数据: ", userBehaviourBlock.DataReceipts)
 		r, err := c.UserBehaviour(subCtx, &pb.UserBehaviourData{DataReceipts: userBehaviourBlock.DataReceipts})
 		if err != nil {
-			log.Error("cloud not greet: %v", err)
+			log.Error("cloud not greet: ", err)
 			return err
 		}
-		log.Info("返回信息: %s", r)
+		log.Info("返回信息: ", r)
 	case LedgerMap[DataTypeAccessLog]:
 		var serviceAccessBlock pb.ServiceAccessData
 		for _, result := range results {
 			var serviceAccessTransaction pb.Transaction
 			if err := json.Unmarshal([]byte(result), &serviceAccessTransaction); err != nil {
-				log.Error("unmarshal error: %v", err)
+				log.Error("unmarshal error: ", err)
 				return err
 			}
 			log.Info("Send Transaction: ", result)
 			serviceAccessBlock.Transactions = append(serviceAccessBlock.Transactions, &serviceAccessTransaction)
 		}
-		log.Info("打包好的数据: ", serviceAccessBlock.Transactions)
+		//log.Info("打包好的数据: ", serviceAccessBlock.Transactions)
 		r, err := c.ServiceAccess(subCtx, &pb.ServiceAccessData{Transactions: serviceAccessBlock.Transactions})
 		if err != nil {
-			log.Error("cloud not greet: %v", err)
+			log.Error("cloud not greet: ", err)
 			return err
 		}
-		log.Info("返回信息: %s", r)
+		log.Info("返回信息: ", r)
 	}
 
 	return nil
