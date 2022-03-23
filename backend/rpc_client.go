@@ -138,7 +138,7 @@ func NewRpcClient(ctx context.Context, config *dataStruct.GlobalConfig, ledgerNa
 				log.Error("unmarshal error: ", err)
 				return err
 			}
-			log.Info("Send Transaction: ", result)
+			//log.Info("Send Transaction: ", result)
 			serviceAccessBlock.Transactions = append(serviceAccessBlock.Transactions, &serviceAccessTransaction)
 		}
 		//log.Info("打包好的数据: ", serviceAccessBlock.Transactions)

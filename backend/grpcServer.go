@@ -39,7 +39,7 @@ func StartGrpcPort(port string) {
 
 //grpc测试接口
 func (s *server) Upper(ctx context.Context, in *pb.UpperRequest) (*pb.UpperReply, error) {
-	log.Info("测试rpc，接收到数据:", in.Name)
+	//log.Info("测试rpc，接收到数据:", in.Name)
 	return &pb.UpperReply{Message: strings.ToUpper(in.Name)}, nil
 }
 
@@ -49,7 +49,7 @@ func (s *server) Video(ctx context.Context, in *pb.VideoData) (*pb.Response, err
 	TransactionDatamu = new(sync.RWMutex)
 	ReceiptDatamu = new(sync.RWMutex)
 	MDDatamu = new(sync.RWMutex)
-	log.Info("Video账本类型，接收到数据: ", in.DataReceipts)
+	//	log.Info("Video账本类型，接收到数据: ", in.DataReceipts)
 	return &pb.Response{ErrCode: SuccessCode, ErrMsg: ""}, nil
 }
 

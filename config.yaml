@@ -44,8 +44,8 @@ cache:
     db: 0
     password: ""
     #按时间推送的时间间隔
-    sync_interval: 20
-    sync_size_limit: 1
+    sync_interval: 60
+    sync_size_limit: 8
     #set数据过期时间  7天
     expire_time: 604800
     connection: 3
@@ -64,8 +64,9 @@ consensus:
     max_live_days: 1
   etcd_group:
     leader:
-       hraft_grpc_address: "10.112.79.24:8880"
-       #hraft_grpc_address: "0.0.0.0:8880"
+       #hraft_grpc_address: "192.168.216.205:8880"
+       hraft_grpc_address: "127.0.0.1:8880"
+       #hraft_grpc_address: "10.28.177.202:8880"
        block_grpc_address: "10.112.235.124:8889"
        host: "localhost"
        port: 2379

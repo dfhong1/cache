@@ -35,6 +35,7 @@ func NewRedisBackend(ctx context.Context, config *dataStruct.GlobalConfig) (*red
 			config:      config,
 			ledgerName:  t,
 			currentSize: 0,
+			currentNum:  0,
 		}
 		//t需要传入闭包或者重新声明
 		go func(t string) {
@@ -60,6 +61,7 @@ type subscribeClient struct {
 	config      *dataStruct.GlobalConfig
 	ledgerName  string //账本类型
 	currentSize int
+	currentNum  int
 }
 
 func (s *subscribeClient) RedisCacheKey() string {
@@ -95,47 +97,111 @@ func initDataTypeSubscribe(ctx context.Context, client *subscribeClient) error {
 
 	// Go channel which receives messages.
 	ch := pubsub.Channel()
+	// chch := pubsub.Channel()
+	// for msg := range chch {
+
+	// 	msg := msg
+	// 	client.currentSize += len(msg.Payload)
+
+	// 	if err := client.rdb.LPush(ctx, client.RedisCacheKey(), msg.Payload).Err(); err != nil {
+
+	// 		log.Error("LPush error: ", err)
+	// 	}
+	// 	//设置过期时间，如果发送数据超时，会定时清理数据
+	// 	if err != nil {
+
+	// 		log.Error("TTL error: ", err)
+	// 	}
+
+	// }
+
 	//协程，上传数据的时间限制，固定时间段内上传一次数据
-	go func() {
-		ticker := time.NewTicker(time.Second * time.Duration(client.config.Cache.CommonConfig.SyncInternal))
+	// go func() {
+	// 	ticker := time.NewTicker(time.Second * time.Duration(client.config.Cache.CommonConfig.SyncInternal))
 
-		defer ticker.Stop()
-		log.Info("按照时间推送") //判断有没有数据需要推送
-		for {
-			<-ticker.C
-			wg.Add(1)
-			wg2.Wait()
-			if err := sendDataBlock(ctx, client, etcdClient); err != nil {
-				Status.FailPushNumber++
-				log.Error("sendDataBlock error: ", err)
-				//return
-			}
-
-			//记录按时间限制推送的数据次数
-			Status.TimePushNumber++
-			wg.Done()
-		}
-	}()
+	// 	defer ticker.Stop()
+	// 	log.Info("按照时间推送") //判断有没有数据需要推送
+	// 	for {
+	// 		<-ticker.C
+	// 		wg.Add(1)
+	// 		//log.Info("消息总长度 ", client.currentSize)
+	// 		wg2.Wait()
+	// 		//start := time.Now().UnixNano()
+	// 		//a := client.currentSize
+	// 		if err := sendDataBlock(ctx, client, etcdClient); err != nil {
+	// 			Status.FailPushNumber++
+	// 			log.Error("sendDataBlock error: ", err)
+	// 			//return
+	// 		}
+	// 		//end := time.Now().UnixNano()
+	// 		//fmt.Printf("endtime:%v\n", end)
+	// 		//log.Infof("按时间推送%v大小的数据总用时：%v ms\n", a, (end-start)/1000000)
+	// 		//记录按时间限制推送的数据次数
+	// 		Status.TimePushNumber++
+	// 		wg.Done()
+	// 	}
+	// }()
 	ch2 := make(chan error)
 	ch3 := make(chan int)
+	defer close(ch2)
+	defer close(ch3)
+	// go func() error {
+	// 	for {
+	// 		select {
+	// 		case err := <-ch2:
+	// 			return err //再穿一个给主函数，让主函数return
+	// 		case x := <-ch3:
+	// 			//if x > client.config.Cache.CommonConfig.SyncSizeLimit {
+	// 			if x > client.config.Cache.CommonConfig.SyncSizeLimit*1024*1024 {
+	// 				// 发送
+	// 				wg.Add(1)
+	// 				log.Info("消息总长度 ", client.currentSize)
+	// 				//a := client.currentSize
+	// 				log.Info("按照数据大小阈值推送")
+	// 				wg2.Wait()
+	// 				//start := time.Now().UnixNano()
+	// 				if err := sendDataBlock(ctx, client, etcdClient); err != nil {
+	// 					Status.FailPushNumber++
+	// 					log.Error("sendDataBlock error: ", err)
+	// 					return err
+	// 				}
+	// 				//end := time.Now().UnixNano()
+	// 				//fmt.Printf("endtime:%v\n", end)
+	// 				//log.Infof("按阈值推送%v大小的数据总用时：%v ms\n", a, (end-start)/1000000)
+	// 				Status.SizePushNumber++
+	// 				//记录按消息总大小限制推送的数据次数
+	// 				//这里可以发一个通道给下面的通道的go func 只有接收到才能执行，但是这样又只能有一个线程
+	// 				wg.Done()
+	// 			}
+
+	// 		}
+
+	// 	}
+	// }()
+
 	go func() error {
 		for {
 			select {
 			case err := <-ch2:
 				return err //再穿一个给主函数，让主函数return
 			case x := <-ch3:
-
-				if x > client.config.Cache.CommonConfig.SyncSizeLimit*1024*1024 {
+				//if x > client.config.Cache.CommonConfig.SyncSizeLimit {
+				if x >= 20000 {
 					// 发送
 					wg.Add(1)
 					log.Info("消息总长度 ", client.currentSize)
-					log.Info("按照数据大小阈值推送")
+					//a := client.currentSize
+					log.Info("按照数据大小阈值推送类型", client.ledgerName)
 					wg2.Wait()
+					//start := time.Now().UnixNano()
 					if err := sendDataBlock(ctx, client, etcdClient); err != nil {
 						Status.FailPushNumber++
 						log.Error("sendDataBlock error: ", err)
 						return err
 					}
+					//end := time.Now().UnixNano()
+					//fmt.Printf("endtime:%v\n", end)
+					//log.Infof("按阈值推送%v大小的数据总用时：%v ms\n", a, (end-start)/1000000)
 					Status.SizePushNumber++
 					//记录按消息总大小限制推送的数据次数
 					//这里可以发一个通道给下面的通道的go func 只有接收到才能执行，但是这样又只能有一个线程
@@ -146,14 +212,15 @@ func initDataTypeSubscribe(ctx context.Context, client *subscribeClient) error {
 
 		}
 	}()
-
 	// Consume messages.获取订阅的消息payload是消息，channel是通道名
 	for msg := range ch {
 		wg.Wait()
 		//计算client获取到消息的总长度
 		msg := msg
 		client.currentSize += len(msg.Payload)
-		ch3 <- client.currentSize
+		client.currentNum++
+		//ch3 <- client.currentSize
+		ch3 <- client.currentNum
 		//log.Info("消息总长度 ", client.currentSize)
 		go func() {
 			// if client.currentSize > client.config.Cache.CommonConfig.SyncSizeLimit*1024*1024 {
@@ -216,6 +283,7 @@ func sendDataBlock(ctx context.Context, client *subscribeClient, etcdClient *cli
 	}
 
 	client.currentSize = 0
+	client.currentNum = 0
 	// client.m.Unlock()
 	return nil
 }

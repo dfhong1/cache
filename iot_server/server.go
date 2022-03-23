@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	_ "net/http/pprof"
 	"strconv"
 	"time"
 
@@ -25,6 +24,7 @@ func NewIOTServer(ctx context.Context, results chan interface{}, rdb *redis.Clie
 	e.GET("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Hello, Scope!")
 	})
+	i := 0
 	e.POST("/storeReceipt", func(c echo.Context) error {
 		//log.Info("接收到存证数据")
 
@@ -52,19 +52,25 @@ func NewIOTServer(ctx context.Context, results chan interface{}, rdb *redis.Clie
 				log.Error("validate error: ", err)
 				return c.JSON(http.StatusOK, NewResult(err.Error(), nil))
 			}
+
 			//result接收数据，将数据进行分类
 			if receipt.DataType == backend.DataTypeVideo || receipt.DataType == backend.DataTypeUserBehaviour {
+				i++
+				if i%10000 == 0 {
+					log.Infof("%v", i)
+				}
 				results <- &receipt
 			} else {
 				log.Error("DataType error")
 				return c.JSON(http.StatusOK, NewResult("DataType error", nil))
 			}
 		}
-		//return c.JSON(http.StatusOK, NewResult("success"))
-		return c.JSON(http.StatusOK, receipts)
+		return c.JSON(http.StatusOK, NewResult("success"))
+		//return c.JSON(http.StatusOK, receipts)
 	})
+
 	e.POST("/storeTransaction", func(c echo.Context) error {
-		log.Info("接收到交易数据")
+		//log.Info("接收到交易数据")
 		var transactions DataTransactions
 		if err := c.Bind(&transactions); err != nil {
 			log.Error("marshal error: ", err)
@@ -78,7 +84,7 @@ func NewIOTServer(ctx context.Context, results chan interface{}, rdb *redis.Clie
 		//该时间传入的整个数组集都统一时间戳
 		str := time.Unix(timeUnix, 0).Format("2006-01-02 15:04:05.123")
 		transactions.CreateTimestamp = str[:23]
-		log.Info(transactions)
+		//log.Info(transactions)
 		for _, t := range transactions.Transactions {
 			var transaction DataTransaction
 			transaction.CreateTimestamp = transactions.CreateTimestamp
@@ -89,6 +95,10 @@ func NewIOTServer(ctx context.Context, results chan interface{}, rdb *redis.Clie
 				return c.JSON(http.StatusOK, NewResult(err.Error(), nil))
 			}
 			if transaction.DataType == backend.DataTypeSensor || transaction.DataType == backend.DataTypeNodeCredibility || transaction.DataType == backend.DataTypeAccessLog {
+				i++
+				if i%10000 == 0 {
+					log.Infof("%v", i)
+				}
 				results <- &transaction
 			} else {
 				log.Error("DataType error")

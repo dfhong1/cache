@@ -58,7 +58,7 @@ func main() {
 		log.SetOutput(os.Stdout)
 	}
 	//交易信息打包推送到hraft节点
-	go backend.StartGrpcPort(":" + "8880")
+	//go backend.StartGrpcPort(":" + "8880")
 	redisClient, err := backend.NewRedisBackend(ctx, &config)
 
 	if err != nil {
@@ -88,7 +88,7 @@ func main() {
 	//通道results是IoT节点传来的数据
 	results := make(chan interface{})
 	defer close(results)
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 10; i++ {
 		go consumeResult(ctx, redisClient, &config, results)
 	}
 
@@ -159,6 +159,7 @@ func consumeResult(ctx context.Context, rdb *redis.Client, config *dataStruct.Gl
 			case *iot_server.DataReceipt:
 				//:TODO 所有分支都执行的关键字是什么来着
 				backend.Status.RequestNumber++
+
 				data, err := json.Marshal(v)
 				if err != nil {
 					log.Error("marshal error: ", err)
@@ -172,11 +173,15 @@ func consumeResult(ctx context.Context, rdb *redis.Client, config *dataStruct.Gl
 				//log.Info("Publish Success: ", string(data))
 				//	log.Info("Publish Success: ")
 				//redis set存入值
+				//start := time.Now().UnixNano()
 				statusCmd := rdb.Set(ctx, v.KeyId, string(data), time.Second*time.Duration(config.Cache.CommonConfig.ExpireTime))
 				if statusCmd == nil || statusCmd.Err() != nil {
 					log.Error("Set error: ", statusCmd.Err())
 					return
 				}
+				//end := time.Now().UnixNano()
+				//fmt.Printf("endtime:%v\n", end)
+				//log.Infof("redis缓存一条数据用时：%v 微秒\n", (end-start)/1000)
 				//log.Info("Set Success: ", string(data))
 				//log.Info("Set Success: ")
 				timestamp := time.Now().Unix()
@@ -200,20 +205,20 @@ func consumeResult(ctx context.Context, rdb *redis.Client, config *dataStruct.Gl
 					log.Error("publish error: ", err)
 					return
 				}
-				log.Info("Publish Success: ", string(data))
+				//log.Info("Publish Success: ", string(data))
 				statusCmd := rdb.Set(ctx, v.TransactionId, string(data), time.Second*time.Duration(config.Cache.CommonConfig.ExpireTime))
 				if statusCmd == nil || statusCmd.Err() != nil {
 					log.Error("Set error: ", statusCmd.Err())
 					return
 				}
-				log.Info("Set Success: ", string(data))
+				//log.Info("Set Success: ", string(data))
 				timestamp := time.Now().Unix()
 				rdb.ZAdd(ctx, "TransactionSet", &redis.Z{
 					Score:  float64(timestamp),
 					Member: string(data),
 				})
 
-				log.Info("TransactionSet zSet Success: ", string(data))
+				//log.Info("TransactionSet zSet Success: ", string(data))
 			default:
 				log.Error("error type ", v)
 			}
