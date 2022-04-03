@@ -65,10 +65,11 @@ consensus:
   etcd_group:
     leader:
        #hraft_grpc_address: "192.168.216.205:8880"
-       hraft_grpc_address: "127.0.0.1:8880"
+       #hraft_grpc_address: "127.0.0.1:8880"
+       hraft_grpc_address: "10.112.143.232:8880"
        #hraft_grpc_address: "10.28.177.202:8880"
        block_grpc_address: "10.112.235.124:8889"
-       host: "localhost"
+       host: "127.0.0.1"
        port: 2379
   async_task:
     node_credible:

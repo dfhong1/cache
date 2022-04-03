@@ -52,11 +52,11 @@ func NewRedisBackend(ctx context.Context, config *dataStruct.GlobalConfig) (*red
 	return rdb, nil
 }
 
-var wg sync.WaitGroup
+// var wg sync.WaitGroup
 var wg2 sync.WaitGroup
 
 type subscribeClient struct {
-	m           sync.Mutex
+	wg          sync.WaitGroup
 	rdb         *redis.Client
 	config      *dataStruct.GlobalConfig
 	ledgerName  string //账本类型
@@ -188,7 +188,7 @@ func initDataTypeSubscribe(ctx context.Context, client *subscribeClient) error {
 				//if x > client.config.Cache.CommonConfig.SyncSizeLimit {
 				if x >= 20000 {
 					// 发送
-					wg.Add(1)
+
 					log.Info("消息总长度 ", client.currentSize)
 					//a := client.currentSize
 					log.Info("按照数据大小阈值推送类型", client.ledgerName)
@@ -205,7 +205,7 @@ func initDataTypeSubscribe(ctx context.Context, client *subscribeClient) error {
 					Status.SizePushNumber++
 					//记录按消息总大小限制推送的数据次数
 					//这里可以发一个通道给下面的通道的go func 只有接收到才能执行，但是这样又只能有一个线程
-					wg.Done()
+					client.wg.Done()
 				}
 
 			}
@@ -214,13 +214,18 @@ func initDataTypeSubscribe(ctx context.Context, client *subscribeClient) error {
 	}()
 	// Consume messages.获取订阅的消息payload是消息，channel是通道名
 	for msg := range ch {
-		wg.Wait()
+		client.wg.Wait()
 		//计算client获取到消息的总长度
 		msg := msg
 		client.currentSize += len(msg.Payload)
 		client.currentNum++
 		//ch3 <- client.currentSize
+		if client.currentNum == 20000 {
+			client.wg.Add(1)
+		}
+
 		ch3 <- client.currentNum
+
 		//log.Info("消息总长度 ", client.currentSize)
 		go func() {
 			// if client.currentSize > client.config.Cache.CommonConfig.SyncSizeLimit*1024*1024 {

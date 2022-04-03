@@ -38,16 +38,45 @@ func NewIOTServer(ctx context.Context, results chan interface{}, rdb *redis.Clie
 			log.Error("validate error: ", err)
 			return c.JSON(http.StatusOK, NewResult(err.Error(), nil))
 		}
-		timeUnix := time.Now().Unix() //时间戳
-		//该时间传入的整个数组集都统一时间戳
-		str := time.Unix(timeUnix, 0).Format("2006-01-02 15:04:05.123")
-		receipts.CreateTimestamp = str[:23]
+		// var naosecond = time.Now().Nanosecond()
+		// stringnase := strconv.Itoa(naosecond)
+		// nasecount := len(stringnase)
+		// naosecond1 := stringnase[nasecount-5 : nasecount-3]
+		// naosecond2 := stringnase[nasecount-3 : nasecount-1]
+		// naosecond3 := stringnase[nasecount-1 : nasecount]
+		// fmt.Println(stringnase)
+		// timeUnix := time.Now().Unix() //时间戳
+		// //该时间传入的整个数组集都统一时间戳
+		// str := time.Unix(timeUnix, 0).Format("2006-01-02 15:04:05")
+
+		// timeCorrect := fmt.Sprintf("%s.%s%s%s", str, naosecond1, naosecond2, naosecond3)
+
+		// receipts.CreateTimestamp = timeCorrect
 		//log.Info(receipts)
 		for _, r := range receipts.Receipts {
 			var receipt DataReceipt
-			receipt.CreateTimestamp = receipts.CreateTimestamp
-			receipt.EntityId = receipts.EntityId
+			var naosecond = time.Now().UnixNano()
+			stringnase := strconv.FormatInt(naosecond, 10)
+			nasecount := len(stringnase)
+			naosecond1 := stringnase[nasecount-5 : nasecount-3]
+			naosecond2 := stringnase[nasecount-3 : nasecount-1]
+			naosecond3 := stringnase[nasecount-1 : nasecount]
+			//fmt.Println(stringnase)
+			timeUnix := time.Now().Unix() //时间戳
+			//该时间传入的整个数组集都统一时间戳
+			str := time.Unix(timeUnix, 0).Format("2006-01-02 15:04:05")
 			receipt.Receipt = r
+			timeCorrect := fmt.Sprintf("%s.%s%s%s", str, naosecond1, naosecond2, naosecond3)
+			//fmt.Println(receipt.DataType, backend.DataTypeVideo)
+			if receipt.DataType == backend.DataTypeVideo {
+				timeCorrect = timeCorrect + "1"
+			} else if receipt.DataType == backend.DataTypeUserBehaviour {
+				timeCorrect = timeCorrect + "2"
+			}
+			//fmt.Println(timeCorrect)
+			receipt.CreateTimestamp = timeCorrect
+			receipt.EntityId = receipts.EntityId
+
 			if err := c.Validate(&r); err != nil {
 				log.Error("validate error: ", err)
 				return c.JSON(http.StatusOK, NewResult(err.Error(), nil))
@@ -80,16 +109,37 @@ func NewIOTServer(ctx context.Context, results chan interface{}, rdb *redis.Clie
 			log.Error("validate error: ", err)
 			return c.JSON(http.StatusOK, NewResult(err.Error(), nil))
 		}
-		timeUnix := time.Now().Unix() //时间戳
-		//该时间传入的整个数组集都统一时间戳
-		str := time.Unix(timeUnix, 0).Format("2006-01-02 15:04:05.123")
-		transactions.CreateTimestamp = str[:23]
+		// timeUnix := time.Now().Unix() //时间戳
+		// //该时间传入的整个数组集都统一时间戳
+		// str := time.Unix(timeUnix, 0).Format("2006-01-02 15:04:05.123")
+		// transactions.CreateTimestamp = str[:23]
 		//log.Info(transactions)
 		for _, t := range transactions.Transactions {
 			var transaction DataTransaction
-			transaction.CreateTimestamp = transactions.CreateTimestamp
-			transaction.EntityId = transactions.EntityId
+			var naosecond = time.Now().UnixNano()
+			stringnase := strconv.FormatInt(naosecond, 10)
+			nasecount := len(stringnase)
+			naosecond1 := stringnase[nasecount-5 : nasecount-3]
+			naosecond2 := stringnase[nasecount-3 : nasecount-1]
+			naosecond3 := stringnase[nasecount-1 : nasecount]
+			//fmt.Println(stringnase)
+			timeUnix := time.Now().Unix() //时间戳
+			//该时间传入的整个数组集都统一时间戳
+			str := time.Unix(timeUnix, 0).Format("2006-01-02 15:04:05")
 			transaction.Transaction = t
+			timeCorrect := fmt.Sprintf("%s.%s%s%s", str, naosecond1, naosecond2, naosecond3)
+			//fmt.Println(timeCorrect)
+			if transaction.DataType == backend.DataTypeSensor {
+				timeCorrect = timeCorrect + "3"
+			} else if transaction.DataType == backend.DataTypeNodeCredibility {
+				timeCorrect = timeCorrect + "4"
+			} else if transaction.DataType == backend.DataTypeAccessLog {
+				timeCorrect = timeCorrect + "5"
+			}
+
+			transaction.CreateTimestamp = timeCorrect
+			transaction.EntityId = transactions.EntityId
+
 			if err := c.Validate(&t); err != nil {
 				log.Error("validate error: ", err)
 				return c.JSON(http.StatusOK, NewResult(err.Error(), nil))
