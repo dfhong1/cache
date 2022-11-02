@@ -90,3 +90,6 @@ func TestBlockService_QueryGenesisBlock(t *testing.T) {
 	t.Logf("%+v\n",*block)
 }
 
+func TestReadTxMinFiletoTenmin(t *testing.T) {
+	
+}

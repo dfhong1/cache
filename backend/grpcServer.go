@@ -22,20 +22,20 @@ type server struct{} //定义一个server结构体
 // }
 
 //遍历开启端口
-//func StartGrpcPort(port string) {
-//	lis, err := net.Listen("tcp", port)
-//	if err != nil {
-//		log.Error("开启端口失败: ", err)
-//	}
-//	log.Info("端口开启成功！", Port)
-//
-//	s := grpc.NewServer()
-//	pb.RegisterToUpperServer(s, &server{})
-//	//reflection.Register(s)
-//	if err := s.Serve(lis); err != nil {
-//		log.Error("端口服务调用失败: ", err)
-//	}
-//}
+func StartGrpcPort(port string) {
+	lis, err := net.Listen("tcp", port)
+	if err != nil {
+		log.Error("开启端口失败: ", err)
+	}
+	log.Info("端口开启成功！", Port)
+
+	s := grpc.NewServer()
+	pb.RegisterToUpperServer(s, &server{})
+	//reflection.Register(s)
+	if err := s.Serve(lis); err != nil {
+		log.Error("端口服务调用失败: ", err)
+	}
+}
 
 //grpc测试接口
 func (s *server) Upper(ctx context.Context, in *pb.UpperRequest) (*pb.UpperReply, error) {
@@ -49,7 +49,7 @@ func (s *server) Video(ctx context.Context, in *pb.VideoData) (*pb.Response, err
 	TransactionDatamu = new(sync.RWMutex)
 	ReceiptDatamu = new(sync.RWMutex)
 	MDDatamu = new(sync.RWMutex)
-	//	log.Info("Video账本类型，接收到数据: ", in.DataReceipts)
+	//log.Info("Video账本类型，接收到数据: ", in.DataReceipts)
 	return &pb.Response{ErrCode: SuccessCode, ErrMsg: ""}, nil
 }
 
@@ -59,7 +59,7 @@ func (s *server) UserBehaviour(ctx context.Context, in *pb.UserBehaviourData) (*
 	TransactionDatamu = new(sync.RWMutex)
 	ReceiptDatamu = new(sync.RWMutex)
 	MDDatamu = new(sync.RWMutex)
-	log.Info("UserBehaviour账本类型，接收到数据:", in.DataReceipts)
+	//log.Info("UserBehaviour账本类型，接收到数据:", in.DataReceipts)
 	return &pb.Response{ErrCode: SuccessCode, ErrMsg: ""}, nil
 }
 
@@ -69,7 +69,7 @@ func (s *server) NodeCredible(ctx context.Context, in *pb.NodeCredibleData) (*pb
 	TransactionDatamu = new(sync.RWMutex)
 	ReceiptDatamu = new(sync.RWMutex)
 	MDDatamu = new(sync.RWMutex)
-	log.Info("NodeCredible账本类型，接收到数据:", in.Transactions)
+	//log.Info("NodeCredible账本类型，接收到数据:", in.Transactions)
 	return &pb.Response{ErrCode: SuccessCode, ErrMsg: ""}, nil
 }
 
@@ -79,7 +79,7 @@ func (s *server) Sensor(ctx context.Context, in *pb.SensorData) (*pb.Response, e
 	TransactionDatamu = new(sync.RWMutex)
 	ReceiptDatamu = new(sync.RWMutex)
 	MDDatamu = new(sync.RWMutex)
-	log.Info("Sensor账本类型，接收到数据:", in.Transactions)
+	//log.Info("Sensor账本类型，接收到数据:", in.Transactions)
 	return &pb.Response{ErrCode: SuccessCode, ErrMsg: ""}, nil
 }
 
@@ -89,6 +89,6 @@ func (s *server) ServiceAccess(ctx context.Context, in *pb.ServiceAccessData) (*
 	TransactionDatamu = new(sync.RWMutex)
 	ReceiptDatamu = new(sync.RWMutex)
 	MDDatamu = new(sync.RWMutex)
-	log.Info("ServiceAccess账本类型，接收到数据:", in.Transactions)
+	//log.Info("ServiceAccess账本类型，接收到数据:", in.Transactions)
 	return &pb.Response{ErrCode: SuccessCode, ErrMsg: ""}, nil
 }

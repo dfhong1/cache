@@ -47,17 +47,17 @@ type Receipt struct {
 // 存证数据记录
 type DataReceipt struct {
 	CreateTimestamp string `json:"createTimestamp" validate:"required"`
-	EntityId        string `json:"entityId"`
+	EntityId  string `json:"entityId"`
 
-	Receipt `json:"receipt"`
+	Receipt //`json:"receipt"`
 }
 
 type DataReceipts struct {
-	CreateTimestamp string    `json:"createTimestamp" validate:"required"`
-	EntityId        string    `json:"entityId"`
-	DataValue       float64   `json:"dataValue"`
-	DataRecNum      int64     `json:"dataRecNum"`
-	Receipts        []Receipt `json:receipts`
+	CreateTimestamp  string    `json:"createTimestamp" validate:"required"`
+	EntityId   string    `json:"entityId"`
+	DataValue  float64   `json:"dataValue"`
+	DataRecNum int64     `json:"dataRecNum"`
+	Receipts   []Receipt `json:receipts`
 }
 
 type BlockInfoResp struct {
@@ -76,11 +76,11 @@ type ReceiptResponseInfo struct {
 }
 
 type TransactionResponseInfo struct {
-	Success         bool            `json:"success"`
-	Status          bool            `json:"status"`
-	Err             string          `json:"err"`
-	DataTransaction DataTransaction `json:"dataTransaction"`
-	BlockInfoResp   BlockInfoResp   `json:"blockInfoResp"`
+	Success       bool          `json:"success"`
+	Status        bool          `json:"status"`
+	Err           string        `json:"err"`
+	DataTransaction   DataTransaction   `json:"dataTransaction"`
+	BlockInfoResp BlockInfoResp `json:"blockInfoResp"`
 }
 
 type Transaction struct {
@@ -96,15 +96,16 @@ type Transaction struct {
 // 实时交易记录
 type DataTransaction struct {
 	CreateTimestamp string `json:"createTimestamp" validate:"required"`
-	EntityId        string `json:"entityId"`
+	EntityId  string `json:"entityId"`
 
 	Transaction
 }
 
 type DataTransactions struct {
-	CreateTimestamp string        `json:"createTimestamp" validate:"required"`
-	EntityId        string        `json:"entityId"`
-	TurnOver        float64       `json:"turnOver"`
-	TxRecNum        int64         `json:"txRecNum"`
-	Transactions    []Transaction `json:"transactions"`
+	CreateTimestamp    string        `json:"createTimestamp" validate:"required"`
+	EntityId     string        `json:"entityId"`
+	TurnOver     float64       `json:"turnOver"`
+	TxRecNum     int64         `json:"txRecNum"`
+	Transactions []Transaction `json:"transactions"`
 }
+

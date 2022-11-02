@@ -53,10 +53,10 @@ func NewRedisBackend(ctx context.Context, config *dataStruct.GlobalConfig) (*red
 }
 
 // var wg sync.WaitGroup
-var wg2 sync.WaitGroup
+//var wg2 sync.WaitGroup
 
 type subscribeClient struct {
-	wg          sync.WaitGroup
+	wg, wg2     sync.WaitGroup
 	rdb         *redis.Client
 	config      *dataStruct.GlobalConfig
 	ledgerName  string //账本类型
@@ -186,13 +186,13 @@ func initDataTypeSubscribe(ctx context.Context, client *subscribeClient) error {
 				return err //再穿一个给主函数，让主函数return
 			case x := <-ch3:
 				//if x > client.config.Cache.CommonConfig.SyncSizeLimit {
-				if x >= 20000 {
+				if x >= 20 {
 					// 发送
 
 					log.Info("消息总长度 ", client.currentSize)
 					//a := client.currentSize
 					log.Info("按照数据大小阈值推送类型", client.ledgerName)
-					wg2.Wait()
+					client.wg2.Wait()
 					//start := time.Now().UnixNano()
 					if err := sendDataBlock(ctx, client, etcdClient); err != nil {
 						Status.FailPushNumber++
@@ -220,7 +220,7 @@ func initDataTypeSubscribe(ctx context.Context, client *subscribeClient) error {
 		client.currentSize += len(msg.Payload)
 		client.currentNum++
 		//ch3 <- client.currentSize
-		if client.currentNum == 20000 {
+		if client.currentNum == 20 {
 			client.wg.Add(1)
 		}
 
@@ -232,7 +232,7 @@ func initDataTypeSubscribe(ctx context.Context, client *subscribeClient) error {
 			// 	client.m.Lock()
 			// 	defer client.m.Unlock()
 			// }
-			wg2.Add(1)
+			client.wg2.Add(1)
 			//可以使用LPush()方法将数据从左侧压入链表，client.RedisCacheKey()是key,payload是value
 
 			if err := client.rdb.LPush(ctx, client.RedisCacheKey(), msg.Payload).Err(); err != nil {
@@ -243,7 +243,7 @@ func initDataTypeSubscribe(ctx context.Context, client *subscribeClient) error {
 			//设置过期时间，如果发送数据超时，会定时清理数据
 
 			res, err := client.rdb.Expire(ctx, client.RedisCacheKey(), time.Minute*60).Result()
-			wg2.Done()
+			client.wg2.Done()
 			if err != nil {
 
 				log.Error("TTL error: ", err)

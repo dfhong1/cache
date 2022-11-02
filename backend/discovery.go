@@ -13,7 +13,7 @@ type activeService struct {
 	mutex sync.Mutex
 }
 
-// 获取服务目录下所有key初始化到服务的可用节点列表中
+// 获取服务目录下所有key，初始化到服务的可用节点列表中
 func ServiceDiscovery(ctx context.Context, etcdClient *clientv3.Client, serviceTarget string) []string {
 	service := &activeService {
 		prefix: serviceTarget,
